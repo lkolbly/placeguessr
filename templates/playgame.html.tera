@@ -1,158 +1,48 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>Street View Containers</title>
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
-    <script
-      src="https://maps.googleapis.com/maps/api/js?key={{api_key}}&callback=initialize&libraries=&v=weekly"
-      defer
-    ></script>
-
-    <!-- Latest compiled and minified CSS -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
-
-    <!-- Optional theme -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap-theme.min.css" integrity="sha384-6pzBo3FDv/PJ8r2KRkGHifhEocL+1X2rVCTTkUfGk7/0pbek5mMa1upzvWbrUbOZ" crossorigin="anonymous">
-
-    <!-- Latest compiled and minified JavaScript -->
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd" crossorigin="anonymous"></script>
-
-    <style type="text/css">
-      html,
-      body {
-        height: 100%;
-        margin: 0;
-        padding: 0;
-      }
-
-      #street-view {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-      }
-
-      #map {
-        position: absolute;
-        width: 300px;
-        height: 300px;
-        z-index: 100;
-      }
-
-      #map:hover {
-        width: 700px;
-        height: 500px;
-      }
-
-      #guess {
-        position: absolute;
-        z-index: 200;
-        margin-left: auto;
-        margin-right: auto;
-        left: 0;
-        right: 0;
-        width: 400px;
-        top: 10px;
-      }
-    </style>
-    <script>
-      let panorama;
-      let map;
-      let guess_marker;
-      let hint_marker;
-
-      function buildPanorama(place) {
-        panorama = new google.maps.StreetViewPanorama(
-          document.getElementById("street-view"),
-          {
-            //position: { lat: {{ location.latitude }}, lng: {{ location.longitude }} },
-            position: place,
-            pov: { heading: 165, pitch: 0 },
-            zoom: 1,
-            disableDefaultUI: true,
-            showRoadLabels: false,
-          }
-        );
-      }
-
-      function processSVData(tries_remaining, backup_location, data, status) {
-        var place = new google.maps.LatLng({{location.latitude}}, {{location.longitude}});
-        let sv = new google.maps.StreetViewService();
-        console.log(data);
-        console.log(status);
-        if (status == google.maps.StreetViewStatus.OK) {
-          console.log(data.location.latLng.lat() + " " + data.location.latLng.lng());
-          backup_location = data.location.latLng;
-          var dist = google.maps.geometry.spherical.computeDistanceBetween(place, data.location.latLng) - 1;
-          if (tries_remaining == 0 || dist < 100) {
-            buildPanorama(data.location.latLng);
-          } else {
-            //processSVData(tries_remaining - 1,);
-            console.log("Searching location at dist=" + dist);
-            let search_obj = {location: place, radius: dist};
-            if (tries_remaining > 1) {
-              search_obj.source = google.maps.StreetViewSource.OUTDOOR;
-            }
-            sv.getPanorama(search_obj, function(data, status) {
-              processSVData(tries_remaining - 1, backup_location, data, status);
-            });
-          }
-        } else if (status == google.maps.StreetViewStatus.ZERO_RESULTS) {
-          if (backup_location == null && tries_remaining > 0) {
-            // Try again, but not just outdoor this time...
-            sv.getPanorama({location: place, radius: 100000}, function(data, status) {
-              processSVData(tries_remaining - 1, backup_location, data, status);
-            });
-          } else {
-            buildPanorama(backup_location);
-          }
-        } else {
-          alert("An unrecoverable error occurred!");
+{% extends "main" %}
+{% block body %}
+<div id="street-view"></div>
+<div id="map"></div>
+<div id="guess">
+  <form action="guess" method="POST">
+    <input id="guess-lat" type="hidden" name="lat" value="">
+    <input id="guess-lon" type="hidden" name="lon" value="">
+    <input style="width:400px" class="btn btn-warning" type="submit" value="Guess!">
+  </form>
+</div>
+{% endblock body %}
+{% block script %}
+<script>
+  function init() {
+    let sv = new google.maps.StreetViewService();
+    document.getElementById("guess").style.visibility = "hidden";
+    var place = new google.maps.LatLng({{location.latitude}}, {{location.longitude}});
+    console.log("True location is: " + {{location.latitude}} + " " + {{location.longitude}});
+    sv.getPanorama({location: place, radius: 100000, source: google.maps.StreetViewSource.OUTDOOR}, function(data, status) {
+      processSVData(sv, place, 5, null, data, status);
+    });
+    map = new google.maps.Map(document.getElementById("map"), {
+      center: { lat: 0, lng: 0 },
+      zoom: 1,
+      disableDefaultUI: true,
+    });
+    map.addListener("click", (mapsMouseEvent) => {
+        console.log(mapsMouseEvent.latLng.toJSON());
+        if (guess_marker) {
+            guess_marker.setMap(null);
         }
-      }
-
-      function initialize() {
-        let sv = new google.maps.StreetViewService();
-        document.getElementById("guess").style.visibility = "hidden";
-        var place = new google.maps.LatLng({{location.latitude}}, {{location.longitude}});
-        console.log("True location is: " + {{location.latitude}} + " " + {{location.longitude}});
-        sv.getPanorama({location: place, radius: 100000, source: google.maps.StreetViewSource.OUTDOOR}, function(data, status) {
-          processSVData(5, null, data, status);
-        });
-        map = new google.maps.Map(document.getElementById("map"), {
-          center: { lat: 0, lng: 0 },
-          zoom: 1,
-          disableDefaultUI: true,
-        });
-        map.addListener("click", (mapsMouseEvent) => {
-            console.log(mapsMouseEvent.latLng.toJSON());
-            if (guess_marker) {
-                guess_marker.setMap(null);
-            }
-            guess_marker = new google.maps.Marker({
-                position: mapsMouseEvent.latLng,
-                map,
-            });
-            document.getElementById("guess").style.visibility = "";
-            document.getElementById("guess-lat").value = mapsMouseEvent.latLng.lat();
-            document.getElementById("guess-lon").value = mapsMouseEvent.latLng.lng();
-        });
-
-        /*hint_marker = new google.maps.Marker({
-            position: place,
+        guess_marker = new google.maps.Marker({
+            position: mapsMouseEvent.latLng,
             map,
-        });*/
-      }
-    </script>
-  </head>
-  <body>
-    <div id="street-view"></div>
-    <div id="map"></div>
-    <div id="guess">
-        <form action="guess" method="POST">
-            <input id="guess-lat" type="hidden" name="lat" value="">
-            <input id="guess-lon" type="hidden" name="lon" value="">
-            <input style="width:400px" class="btn btn-warning" type="submit" value="Guess!">
-        </form>
-    </div>
-  </body>
-</html>
+        });
+        document.getElementById("guess").style.visibility = "";
+        document.getElementById("guess-lat").value = mapsMouseEvent.latLng.lat();
+        document.getElementById("guess-lon").value = mapsMouseEvent.latLng.lng();
+    });
+
+    /*hint_marker = new google.maps.Marker({
+        position: place,
+        map,
+    });*/
+  }
+</script>
+{% endblock initialize %}

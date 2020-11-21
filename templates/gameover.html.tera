@@ -1,110 +1,26 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>Street View Containers</title>
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
-    <script
-      src="https://maps.googleapis.com/maps/api/js?key={{api_key}}&callback=initialize&libraries=&v=weekly"
-      defer
-    ></script>
-    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/js-cookie@rc/dist/js.cookie.min.js"></script>
-    <style type="text/css">
-      html,
-      body {
-        height: 100%;
-        margin: 0;
-        padding: 0;
-      }
-
-      #map {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        /*z-index: 100;*/
-      }
-
-      #next {
-        position: absolute;
-        z-index: 200;
-        margin-left: auto;
-        margin-right: auto;
-        left: 0;
-        right: 0;
-        width: 400px;
-        top: 10px;
-      }
-
-      #results {
-        position: absolute;
-        z-index: 100;
-        width: 200px;
-        right: 0px;
-        background: white;
-      }
-    </style>
-    <script>
-      let map;
-      let results = [];
-
-      function pollGame() {
-        $.get("game-poller", {}, function(data) {
-            console.log(data);
-            let playerid = Cookies.get("playerid");
-            if (data.player_states[playerid] === "Guessing") {
-                // Move to the new screen
-                window.location.replace("play-round");
-            } else if (data.player_states[playerid] === "RoundResults") {
-                // The game is over, finish up
-            } else {
-                setTimeout(function() { pollGame(); }, 500);
-            }
-        }, "json");
-      }
-
-      function render_pair(actual_pos, guess_pos) {
-        actual = new google.maps.Marker({
-            position: actual_pos,
-            label: "ACTUAL",
-            map,
-        });
-        guess = new google.maps.Marker({
-            position: guess_pos,
-            label: "GUESS",
-            map,
-        });
-        diff_line = new google.maps.Polyline({
-            path: [ guess_pos, actual_pos ],
-            geodesic: false,
-            strokeColor: "#FF0000",
-            strokeOpacity: 1.0,
-            strokeWeight: 4,
-        });
-        diff_line.setMap(map);
-        results.push([actual, guess, diff_line]);
-      }
-
-      function initialize() {
-        map = new google.maps.Map(document.getElementById("map"), {
-          center: { lat: 0, lng: -10.0 },
-          zoom: 2,
-        });
-        {% for result in results %}
-        render_pair({ lat: {{result.actual.latitude}}, lng: {{result.actual.longitude}} }, { lat: {{result.guess.latitude}}, lng: {{result.guess.longitude}} });
-        {% endfor %}
-        //pollGame();
-      }
-    </script>
-  </head>
-  <body>
-    <div id="map"></div>
-    <div id="results">
-      Total score: {{score}}<br/>Good game!
-    </div>
-    <div id="next">
-      <form action="index">
-        <input style="width:400px" class="btn" type="submit" value="New Game">
-      </form>
-    </div>
-  </body>
-</html>
+{% extends "main" %}
+{% block body %}
+<div id="map"></div>
+<div id="results">
+  Total score: {{score}}<br/>Good game!
+</div>
+<div id="next">
+  <form action="index">
+    <input style="width:400px" class="btn" type="submit" value="New Game">
+  </form>
+</div>
+{% endblock body %}
+{% block script %}
+<script>
+  function init() {
+    map = new google.maps.Map(document.getElementById("fullmap"), {
+      center: { lat: 0, lng: -10.0 },
+      zoom: 2,
+    });
+    {% for result in results %}
+    render_pair({ lat: {{result.actual.latitude}}, lng: {{result.actual.longitude}} }, { lat: {{result.guess.latitude}}, lng: {{result.guess.longitude}} });
+    {% endfor %}
+    //pollGame();
+  }
+</script>
+{% endblock script %}
