@@ -1,6 +1,6 @@
 {% extends "main" %}
 {% block body %}
-<div id="map"></div>
+<div id="fullmap"></div>
 <div id="results">
   Total score: {{score}}<br/>Good game!
 </div>
