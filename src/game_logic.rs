@@ -75,17 +75,7 @@ pub struct Game {
 impl Game {
     pub fn new(num_locations: usize, generator: &LocationGenerator, dataset: &str) -> Game {
         let locations: Vec<_> = (0..num_locations)
-            .map(|_| {
-                generator.sample_from_dataset(dataset)
-                /*Location {
-                    latitude: 37.06867218017578,
-                    longitude: -121.54496002197266,
-                }*/
-                /*Location {
-                    latitude: 50.437025,
-                    longitude: 51.682431,
-                }*/
-            })
+            .map(|_| generator.sample_from_dataset(dataset))
             .collect();
         // These are some test-case locations that have proven tricky
         /*let locations = vec![
@@ -100,6 +90,22 @@ impl Game {
             Location {
                 latitude: 50.437025,
                 longitude: 51.682431,
+            },
+            Location {
+                latitude: 34.04820251464844,
+                longitude: 8.216394424438477,
+            },
+            Location {
+                latitude: 36.332706451416016,
+                longitude: 3.49965000152879,
+            },
+            Location {
+                latitude: 11.756479263305664,
+                longitude: -2.8153998851776123,
+            },
+            Location {
+                latitude: 24.17917251586914,
+                longitude: 47.30128860473633,
             },
         ];*/
         let num_locations = locations.len();
