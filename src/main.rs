@@ -3,12 +3,12 @@
 #[macro_use]
 extern crate rocket;
 
-//use log::*;
+use rocket::http::Status;
 use rocket::http::{Cookie, Cookies};
 use rocket::request::Form;
 use rocket::request::FromForm;
 use rocket::request::FromRequest;
-//use rocket::response::Redirect;
+use rocket::request::Outcome;
 use rocket::Request;
 use rocket::State;
 use rocket_contrib::templates::Template;
@@ -16,7 +16,6 @@ use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
-//use std::time::{Duration, Instant};
 
 mod game_logic;
 mod location;
@@ -30,6 +29,7 @@ type PlayerId = usize;
 type GameId = usize;
 
 struct GuardedGame(Arc<Mutex<Game>>);
+struct GuardedGameAndPid(Arc<Mutex<Game>>, PlayerId);
 
 struct Games {
     generator: LocationGenerator,
@@ -73,23 +73,29 @@ impl Games {
     }
 }
 
-impl<'a, 'r> FromRequest<'a, 'r> for GuardedGame {
+impl<'a, 'r> FromRequest<'a, 'r> for GuardedGameAndPid {
     type Error = ();
 
-    fn from_request(request: &'a Request<'r>) -> rocket::request::Outcome<Self, Self::Error> {
-        let playerid = request
-            .cookies()
-            .get("playerid")
-            .unwrap()
-            .value()
-            .parse::<usize>()
-            .unwrap();
-        log::info!("Received guess attempt from playerid={}", playerid);
+    fn from_request(request: &'a Request<'r>) -> Outcome<Self, Self::Error> {
+        let playerid = match request.cookies().get("playerid") {
+            Some(s) => match s.value().parse::<usize>() {
+                Ok(pid) => pid,
+                Err(_) => {
+                    return Outcome::Failure((Status::BadRequest, ()));
+                }
+            },
+            None => {
+                return Outcome::Failure((Status::BadRequest, ()));
+            }
+        };
+        log::info!("Received authentication from playerid={}", playerid);
 
-        request.guard::<State<GuardedGames>>().map(|games| {
-            let mut db = games.inner().lock().unwrap();
-            db.get_game(playerid).unwrap()
-        })
+        let db = request.guard::<State<GuardedGames>>().unwrap();
+        let mut db = db.inner().lock().unwrap();
+        match db.get_game(playerid) {
+            Some(game) => Outcome::Success(GuardedGameAndPid(game.0, playerid)),
+            None => Outcome::Failure((Status::BadRequest, ())),
+        }
     }
 }
 
@@ -196,12 +202,11 @@ fn create_game(
 #[get("/play-round")]
 fn play_round(
     google_auth: State<GoogleAuthentication>,
-    game: GuardedGame,
+    game: GuardedGameAndPid,
     cookies: Cookies,
 ) -> Template {
+    let playerid = game.1;
     let mut game = game.0.lock().unwrap();
-    let playerid = cookies.get("playerid").unwrap().value();
-    let playerid = playerid.parse::<usize>().unwrap();
     render_playgame(&google_auth, &mut game, playerid)
 }
 
@@ -221,14 +226,13 @@ struct GuessResultContext {
 #[post("/guess", data = "<guess>")]
 fn guess(
     google_auth: State<GoogleAuthentication>,
-    game: GuardedGame,
+    game: GuardedGameAndPid,
     cookies: Cookies,
     guess: Form<LocationGuess>,
 ) -> Template {
+    let playerid = game.1;
     let mut game = game.0.lock().unwrap();
-    let playerid = cookies.get("playerid").unwrap().value();
     log::info!("Received guess attempt from playerid={}", playerid);
-    let playerid = playerid.parse::<usize>().unwrap();
     let guess = Location {
         latitude: guess.lat,
         longitude: guess.lon,
@@ -252,12 +256,11 @@ fn guess(
 #[get("/advance-guess")]
 fn advance_guess(
     google_auth: State<GoogleAuthentication>,
-    game: GuardedGame,
+    game: GuardedGameAndPid,
     cookies: Cookies,
 ) -> Template {
+    let playerid = game.1;
     let mut game = game.0.lock().unwrap();
-    let playerid = cookies.get("playerid").unwrap().value();
-    let playerid = playerid.parse::<usize>().unwrap();
 
     game.advance_guess().unwrap();
     render_playgame(&google_auth, &mut game, playerid)
@@ -265,9 +268,9 @@ fn advance_guess(
 
 #[get("/game-poller")]
 fn game_poller(db: State<GuardedGames>, cookies: Cookies) -> String {
-    let mut db = db.inner().lock().unwrap();
     let playerid = cookies.get("playerid").unwrap().value();
     let playerid = playerid.parse::<usize>().unwrap();
+    let mut db = db.inner().lock().unwrap();
     //serde_json::to_string(db.get_game(playerid)).unwrap()
     "Test".to_string()
 }
