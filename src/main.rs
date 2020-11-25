@@ -318,8 +318,14 @@ fn rocket(
 
 fn main() {
     //env_logger::init();
-    let location_gen =
-        LocationGenerator::from_datafile(&[("mcdonalds", "mcdonalds.dat"), ("world", "roads.dat")]);
+    let location_gen = LocationGenerator::from_datafile(&[
+        ("mcdonalds", "mcdonalds.dat"),
+        ("walmart", "walmart.dat"),
+        ("world", "roads.dat"),
+        ("europe", "roads-eu.dat"),
+        ("texas", "roads-texas.dat"),
+        ("us", "roads-us.dat"),
+    ]);
 
     let google_auth: GoogleAuthentication =
         serde_yaml::from_str(&std::fs::read_to_string("keys.yaml").unwrap()).unwrap();

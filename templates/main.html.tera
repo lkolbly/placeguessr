@@ -70,6 +70,9 @@
         width: 200px;
         right: 0px;
         background: white;
+        font-size: 18px;
+        border: 1px solid black;
+        padding: 5px;
       }
 
       #guess {
@@ -95,6 +98,7 @@
       let map;
       let guess_marker;
       let hint_marker;
+      let results = [];
 
       function buildPanorama(place) {
         panorama = new google.maps.StreetViewPanorama(
@@ -107,6 +111,28 @@
             showRoadLabels: false,
           }
         );
+      }
+
+      function render_pair(actual_pos, guess_pos) {
+        actual = new google.maps.Marker({
+            position: actual_pos,
+            label: "ACTUAL",
+            map,
+        });
+        guess = new google.maps.Marker({
+            position: guess_pos,
+            label: "GUESS",
+            map,
+        });
+        diff_line = new google.maps.Polyline({
+            path: [ guess_pos, actual_pos ],
+            geodesic: false,
+            strokeColor: "#FF0000",
+            strokeOpacity: 1.0,
+            strokeWeight: 4,
+        });
+        diff_line.setMap(map);
+        results.push([actual, guess, diff_line]);
       }
 
       function processSVData(sv, place, tries_remaining, backup_location, data, status) {
