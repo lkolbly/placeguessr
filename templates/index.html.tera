@@ -4,7 +4,7 @@
     <body>
         <!-- Create a game -->
         Locations:<br/>
-        <form action="create-game" method="POST">
+        <form action="/placeguessr/create-game" method="POST">
             <input type="radio" id="world" name="place" value="world">
             <label for="world">World</label>
             <br/>
@@ -20,9 +20,9 @@
             <input type="radio" id="mcdonalds" name="place" value="mcdonalds">
             <label for="mcdonalds">McDonald's Only</label>
             <br/>
-            <input type="radio" id="walmart" name="place" value="walmart">
+            <!--<input type="radio" id="walmart" name="place" value="walmart">
             <label for="walmart">WalMart Only</label>
-            <br/>
+            <br/>-->
             <input type="submit" value="Create Game">
         </form>
 
