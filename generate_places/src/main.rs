@@ -631,7 +631,8 @@ impl BoundaryFinder {
                                     if member.member_type
                                         == osmpbf::elements::RelMemberType::Relation
                                     {
-                                        panic!("Found relation as outer/inner member of relation! Where is this allowed?");
+                                        log::error!("Found relation {} as outer/inner member of relation {}! Where is this allowed?", member.member_id, rel.id());
+                                        return; // We have to skip this relation
                                     }
                                     //self.boundary_ways.push(member.member_id);
                                     way_ids.push(member.member_id);
@@ -774,12 +775,18 @@ where
         ProgressStyle::default_bar()
             .template("[{elapsed_precise}] {bar:40} {pos}/{len} {per_sec} ETA:{eta}"),
     );
+    let mut cnt = 0;
     reader
         .for_each(|element| {
             cb(&element);
             match element {
                 Element::Node(_) | Element::DenseNode(_) => {
-                    bar.inc(1);
+                    //bar.inc(1);
+                    cnt += 1;
+                    if cnt > 101977 {
+                        bar.inc(cnt);
+                        cnt = 0;
+                    }
                 }
                 _ => {}
             }
@@ -894,7 +901,7 @@ async fn main() {
     mcdonalds.export(FilePointWriter::new("mcdonalds.dat"));
     walmart.export(FilePointWriter::new("walmart.dat"));
     roads.export(FilePointWriter::new("roads.dat"));
-    geographic_filter.dump_to_file(117177, "tmp.csv");
+    //geographic_filter.dump_to_file(117177, "tmp.csv");
     /*roads.export(geographic_filter.filter(
         117177,
         DebugPointTee::new("pnts.csv", FilePointWriter::new("roads-cheswold.dat")),
