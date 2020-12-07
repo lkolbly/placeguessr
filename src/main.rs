@@ -329,7 +329,21 @@ fn rocket(
                 random,
             ],
         )
-        .attach(Template::fairing())
+        .attach(Template::custom(|engines| {
+            engines
+                .tera
+                .add_raw_templates(vec![
+                    ("gameover", include_str!("../templates/index.html.tera")),
+                    (
+                        "guess_result",
+                        include_str!("../templates/guess_result.html.tera"),
+                    ),
+                    ("index", include_str!("../templates/index.html.tera")),
+                    ("main", include_str!("../templates/main.html.tera")),
+                    ("playgame", "playgame.html.tera"),
+                ])
+                .unwrap();
+        }))
         .manage(places)
         .manage(db)
         .manage(google_auth)
