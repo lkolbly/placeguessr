@@ -5,24 +5,11 @@
         <!-- Create a game -->
         Locations:<br/>
         <form action="/placeguessr/create-game" method="POST">
-            <input type="radio" id="world" name="place" value="world">
-            <label for="world">World</label>
-            <br/>
-            <input type="radio" id="us" name="place" value="us">
-            <label for="us">United States</label>
-            <br/>
-            <input type="radio" id="europe" name="place" value="europe">
-            <label for="europe">Europe</label>
-            <br/>
-            <input type="radio" id="texas" name="place" value="texas">
-            <label for="texas">Texas</label>
-            <br/>
-            <input type="radio" id="mcdonalds" name="place" value="mcdonalds">
-            <label for="mcdonalds">McDonald's Only</label>
-            <br/>
-            <!--<input type="radio" id="walmart" name="place" value="walmart">
-            <label for="walmart">WalMart Only</label>
-            <br/>-->
+            {% for place in places %}
+                <input type="radio" id="{{place.key}}" name="place" value="{{place.key}}"/>
+                <label for="{{place.key}}">{{place.human_name}}</label>
+                <br/>
+            {% endfor %}
             <input type="submit" value="Create Game">
         </form>
 

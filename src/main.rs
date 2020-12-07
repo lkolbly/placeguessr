@@ -104,21 +104,38 @@ fn hello(name: String, age: u8) -> String {
     format!("Hello, {} year old named {}!", age, name)
 }
 
+#[derive(Serialize)]
+struct IndexContext<'a> {
+    places: &'a [PlaceSpec],
+}
+
+fn render_index(places: &[PlaceSpec]) -> Template {
+    let context = IndexContext { places };
+    Template::render("index", &context)
+}
+
 #[get("/index")]
-fn index() -> Template {
+fn index(places: State<Vec<PlaceSpec>>) -> Template {
     let data: HashMap<String, String> = HashMap::new();
-    Template::render("index", &data)
+    render_index(&places)
 }
 
 #[get("/")]
-fn root() -> Template {
+fn root(places: State<Vec<PlaceSpec>>) -> Template {
     let data: HashMap<String, String> = HashMap::new();
-    Template::render("index", &data)
+    render_index(&places)
 }
 
 #[derive(FromForm)]
 struct CreateGame {
     place: String,
+}
+
+#[derive(Deserialize, Serialize)]
+struct PlaceSpec {
+    key: String,
+    filename: String,
+    human_name: String,
 }
 
 #[derive(Serialize)]
@@ -293,6 +310,7 @@ fn random(
 fn rocket(
     google_auth: GoogleAuthentication,
     root: &'static str,
+    places: Vec<PlaceSpec>,
     location_gen: LocationGenerator,
 ) -> rocket::Rocket {
     let db = Arc::new(Mutex::new(Games::new(location_gen)));
@@ -312,25 +330,32 @@ fn rocket(
             ],
         )
         .attach(Template::fairing())
+        .manage(places)
         .manage(db)
         .manage(google_auth)
 }
 
+#[derive(Deserialize)]
+struct Config {
+    authentication: GoogleAuthentication,
+    places: Vec<PlaceSpec>,
+}
+
 fn main() {
-    //env_logger::init();
-    let location_gen = LocationGenerator::from_datafile(&[
-        ("mcdonalds", "mcdonalds.dat"),
-        ("walmart", "walmart.dat"),
-        ("world", "roads.dat"),
-        ("europe", "roads-eu.dat"),
-        ("texas", "roads-texas.dat"),
-        ("us", "roads-us.dat"),
-    ]);
+    let config: Config =
+        serde_yaml::from_str(&std::fs::read_to_string("config.yaml").unwrap()).unwrap();
 
-    let google_auth: GoogleAuthentication =
-        serde_yaml::from_str(&std::fs::read_to_string("keys.yaml").unwrap()).unwrap();
+    let places: Vec<_> = config
+        .places
+        .iter()
+        .map(|p| (p.key.as_str(), p.filename.as_str()))
+        .collect();
 
-    rocket(google_auth, "/placeguessr", location_gen).launch();
+    let location_gen = LocationGenerator::from_datafile(places.as_slice());
+
+    let google_auth: GoogleAuthentication = config.authentication;
+
+    rocket(google_auth, "/placeguessr", config.places, location_gen).launch();
 }
 
 #[cfg(test)]
@@ -343,10 +368,15 @@ mod test {
     use rocket::local::Client;
 
     fn mkrocket() -> rocket::Rocket {
+        let places = vec![PlaceSpec {
+            key: "us",
+            filename: "roads-us.dat",
+            human_name: "US",
+        }];
         let mock_auth = GoogleAuthentication {
             api_key: "1234".to_string(),
         };
-        rocket(mock_auth, "/", LocationGenerator::mock())
+        rocket(mock_auth, "/", places, LocationGenerator::mock())
     }
 
     #[test]

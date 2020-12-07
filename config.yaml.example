@@ -1,0 +1,21 @@
+authentication:
+  api_key: <API KEY>
+places:
+  - key: us
+    human_name: US
+    filename: roads-us.dat
+  - key: texas
+    human_name: Texas
+    filename: roads-texas.dat
+  - key: europe
+    human_name: Europe
+    filename: roads-eu.dat
+  - key: world
+    human_name: World
+    filename: roads.dat
+  - key: mcdonalds
+    human_name: McDonald's Only
+    filename: mcdonalds.dat
+  - key: walmart
+    human_name: Walmart Only
+    filename: walmart.dat
