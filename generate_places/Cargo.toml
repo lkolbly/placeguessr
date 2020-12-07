@@ -14,3 +14,4 @@ tokio = { version = "0.2.22", features = [ "macros" ] }
 log = "0.4.11"
 simple_logger = "1.11.0"
 rand = "0.7.3"
+clap = "2.33.3"

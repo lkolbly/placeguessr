@@ -1,3 +1,4 @@
+use clap::{value_t, App, Arg};
 use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
 use log::*;
 use osmpbf::{Element, ElementReader};
@@ -751,15 +752,16 @@ impl Counter {
     }
 }
 
-fn do_pass<F>(/*path: &str, nnodes: u64,*/ mut cb: F)
+fn do_pass<F>(path: &str, nnodes: u64, mut cb: F)
 where
     F: FnMut(&Element),
 {
     //let reader = ElementReader::from_path(path).unwrap();
-    let (reader, nnodes) = (
+    let reader = ElementReader::from_path(path).expect("Could not open planet file");
+    /*let (reader, nnodes) = (
         ElementReader::from_path("/home/lane/Downloads/planet-190812.osm.pbf").unwrap(),
         6461362092u64,
-    );
+    );*/
     /*let (reader, nnodes) = (
         ElementReader::from_path("/home/lane/Downloads/texas-latest.osm.pbf").unwrap(),
         57964233u64,
@@ -804,6 +806,31 @@ async fn main() {
 
     simple_logger::SimpleLogger::new().init().unwrap();
 
+    let matches = App::new("PlaceGuessr datafile generator")
+        .arg(
+            Arg::with_name("planet")
+                .short("f")
+                .long("planet")
+                .takes_value(true)
+                .required(true)
+                .help("Path to the .osm.pbf planet file"),
+        )
+        .arg(
+            Arg::with_name("num_nodes")
+                .short("n")
+                .takes_value(true)
+                .help("Estimated number of nodes in the file (used for progress bar)"),
+        )
+        .get_matches();
+
+    let planet_path = matches
+        .value_of("planet")
+        .expect(".osm.pbf file path is a required argument");
+    let num_nodes = match value_t!(matches.value_of("num_nodes"), u64) {
+        Ok(x) => x,
+        _ => 0,
+    };
+
     // TODO: Check that there aren't variances across McDonald's (e.g. capitalization, having wikidata numbers)
     let mut mcdonalds = KvNodeExtractor::new("brand", Some("McDonald's"));
     let mut walmart = KvNodeExtractor::new("brand", Some("Walmart"));
@@ -834,7 +861,7 @@ async fn main() {
         ProcessStats::get().await.unwrap().memory_usage_bytes / 1000
     );
 
-    do_pass(|element| {
+    do_pass(planet_path, num_nodes, |element| {
         mcdonalds.process(&element);
         walmart.process(&element);
         counter.process(&element);
@@ -868,7 +895,9 @@ async fn main() {
         ProcessStats::get().await.unwrap().memory_usage_bytes / 1000
     );
 
-    do_pass(|element| {
+    let num_nodes = counter.nodes;
+
+    do_pass(planet_path, num_nodes, |element| {
         mcdonalds.second_pass(&element);
         walmart.second_pass(&element);
         roads.second_pass(&element);
@@ -880,7 +909,7 @@ async fn main() {
         ProcessStats::get().await.unwrap().memory_usage_bytes / 1000
     );
 
-    do_pass(|element| {
+    do_pass(planet_path, num_nodes, |element| {
         geographic_filter.find_nodes(&element);
     });
 

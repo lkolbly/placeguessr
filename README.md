@@ -17,7 +17,6 @@ $ cargo +nightly run --release
 
 TODO:
 =====
-* Remove hardcoding of `planet.osm.pbf` path in generate_places.
 * Remove hardcoding of what regions are available: In webserver, read available places from yaml. In generator, read region specifier from some sort of config file.
   * Config file needs to support all the current place generators (filter by region, filter by OSM tag/value)
 * Embed templates (and maybe even .dat files?) into the executable.
