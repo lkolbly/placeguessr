@@ -1,3 +1,6 @@
 /target
 /generate_places/target
 config.yaml
+**.dat
+Cargo.lock
+generate_places/Cargo.lock
